@@ -40,35 +40,25 @@ class Server:
         return self.__indexed_dataset
 
     def get_hyper_index(self, index: int = None, page_size: int = 10) -> Dict:
-        """
-        Takes 2 integer arguments and returns a dictionary with
-        the following key-value pairs:
-            index: index of the first item in the current page
-            next_index: index of the first item in the next page
-            page_size: the current page size
-            data: actual page of the dataset
-        Args:
-            index(int): first required index
-            page_size(int): required number of records per page
-        """
-        dataset = self.indexed_dataset()
-        data_length = len(dataset)
-        assert 0 <= index < data_length
-        response = {}
+        """ Deletion resilient hypermedia pagination """
+        data_set = self.indexed_dataset()
+        assert index < len(data_set)
+        if index is None:
+            return []
+        next_index = index + page_size
         data = []
-        response['index'] = index
-        for i in range(page_size):
-            while True:
-                curr = dataset.get(index)
-                index += 1
-                if curr is not None:
-                    break
-            data.append(curr)
+        count = index
+        while count < next_index:
+            try:
+                data.append(data_set[count])
+                count += 1
+            except KeyError:
+                next_index += 1
+                count += 1
 
-        response['data'] = data
-        response['page_size'] = len(data)
-        if dataset.get(index):
-            response['next_index'] = index
-        else:
-            response['next_index'] = None
-        return response
+        return {
+            'index': index,
+            'next_index': next_index,
+            'page_size': page_size,
+            'data': data
+        }
